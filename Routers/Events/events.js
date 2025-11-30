@@ -9,7 +9,7 @@ router.post("/addEvent",verifyUser, createEvent);
 router.get("/openEvent", getOpenEvents);
 router.get("/getEvents", getAllEvents);
 router.put("/editEvent/:id", updateEvent);
-router.put("/closeEvent:id/close", closeEvent);
+router.put("/closeEvent/:id", closeEvent);
 
 
 export default router;

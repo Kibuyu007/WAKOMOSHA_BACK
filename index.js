@@ -8,6 +8,7 @@ import cors from 'cors'
 import auth from "./Routers/Users/auth.js";
 import allusers from "./Routers/Users/users.js";
 import events from "./Routers/Events/events.js";
+import michango from "./Routers/Events/contributions.js";
 
 
 // Configurations
@@ -35,6 +36,7 @@ app.use(cors(corsParameters))
 app.use("/api/auth", auth);
 app.use('/api/users',allusers) 
 app.use('/api/events',events)
+app.use('/api/contributions',michango)
 
 
 
