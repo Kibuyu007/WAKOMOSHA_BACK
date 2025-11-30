@@ -5,8 +5,9 @@ import cookieParser from "cookie-parser";
 import cors from 'cors'
 
 //Import routers
-import auth from "./Routers/auth.js";
-import allusers from "./Routers/users.js";
+import auth from "./Routers/Users/auth.js";
+import allusers from "./Routers/Users/users.js";
+import events from "./Routers/Events/events.js";
 
 
 // Configurations
@@ -33,6 +34,7 @@ app.use(cors(corsParameters))
 //routers..
 app.use("/api/auth", auth);
 app.use('/api/users',allusers) 
+app.use('/api/events',events)
 
 
 
