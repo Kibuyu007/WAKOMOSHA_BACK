@@ -2,28 +2,25 @@ import mongoose from "mongoose";
 
 const contributionSchema = mongoose.Schema(
   {
-    eventId: {
+    event: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Event",
       required: true,
     },
-    userId: {
+
+    user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "users",
       required: true,
     },
 
-    promisedAmount: {
+    amount: {
       type: Number,
       required: true,
-    },
-
-    amountPaid: {
-      type: Number,
       default: 0,
-    },
+    }
   },
   { timestamps: true }
 );
 
-export default mongoose.model("EventContribution", contributionSchema);
+export default mongoose.model("Contribution", contributionSchema);

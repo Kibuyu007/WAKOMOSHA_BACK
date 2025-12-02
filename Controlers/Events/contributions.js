@@ -1,111 +1,132 @@
-
 import Contribution from "../../Models/Events/contributions.js";
-import User from "../../Models/Users/users.js";
+import User from "../../Models/Users/users.js"; 
+import Event from "../../Models/Events/events.js"; 
 
-export const getOpenEvents = async (req, res) => {
+// Save or update contribution for a user
+export const saveContribution = async (req, res) => {
   try {
-    const events = await Event.find({ status: "open" }).sort({ createdAt: -1 });
-    res.json(events);
+    const { eventId, userId, amount } = req.body;
+
+    // Check if contribution already exists
+    let contribution = await Contribution.findOne({ event: eventId, user: userId });
+
+    if (contribution) {
+      // Update existing contribution (add amount)
+      contribution.amount += amount; // add to existing
+      await contribution.save();
+    } else {
+      // Create new contribution
+      contribution = await Contribution.create({
+        event: eventId,
+        user: userId,
+        amount,
+      });
+    }
+
+    res.status(200).json({
+      message: "Contribution saved successfully",
+      contribution,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-
-
-
+// Get all contributions for a specific event
 export const getEventContributions = async (req, res) => {
   try {
     const { eventId } = req.params;
 
-    // fetch all users
-    const users = await User.find().select("name email");
+    // Fetch all users
+    const users = await User.find().select("firstName secondName lastName email contacts");
 
-    // fetch all contributions for this event
+    // Fetch contributions for this event
     const contributions = await Contribution.find({ event: eventId });
 
-    // merge users with contributions
-    const response = users.map((u) => {
-      const match = contributions.find((c) => c.user.toString() === u._id.toString());
-
-      return {
-        userId: u._id,
-        name: u.name,
-        email: u.email,
-        promisedAmount: match ? match.promisedAmount : 0,
-        paidAmount: match ? match.paidAmount : 0,
-        remainingAmount: match ? match.promisedAmount - match.paidAmount : 0,
-        finished: match ? match.paidAmount >= match.promisedAmount : false,
-      };
+    // Map contributions for easy lookup
+    const contribMap = {};
+    contributions.forEach((c) => {
+      contribMap[c.user.toString()] = c.amount;
     });
 
-    res.json(response);
+    // Merge contributions with users
+    const merged = users.map((u) => ({
+      _id: u._id,
+      firstName: u.firstName,
+      secondName: u.secondName,
+      lastName: u.lastName,
+      email: u.email,
+      contacts: u.contacts,
+      paidAmount: contribMap[u._id.toString()] || 0,
+    }));
+
+    res.status(200).json({
+      eventId,
+      users: merged,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
 
-
-export const setPromisedAmount = async (req, res) => {
+// GET /api/contributions/eventSummary
+export const eventsSummary = async (req, res) => {
   try {
-    const { userId, eventId, promisedAmount } = req.body;
+    // 1. Get all open events
+    const events = await Event.find({ status: "open" });
 
-    if (!userId || !eventId) {
-      return res.status(400).json({ success: false, message: "userId and eventId are required" });
+    if (!events || events.length === 0) {
+      return res.status(200).json([]);
     }
 
-    let record = await Contribution.findOne({ userId, eventId });
+    // 2. Get all users once (we use this to compute totals)
+    const users = await User.find().select("_id");
+    const totalUsers = users.length;
 
-    if (!record) {
-      record = await Contribution.create({
-        userId,
-        eventId,
-        promisedAmount,
-        paidAmount: 0
+    const summaries = [];
+
+    for (const event of events) {
+      // Fetch all contributions for this event
+      const contributions = await Contribution.find({ event: event._id });
+
+      // totalPaid = sum of contribution.amount
+      const totalPaid = contributions.reduce((sum, c) => sum + (c.amount || 0), 0);
+
+      // totalPromised — if you don't have promised field in Contribution, keep 0
+      // (If you add promisedAmount later, change this to sum promisedAmount)
+      const totalPromised = contributions.reduce((sum, c) => sum + (c.promisedAmount || 0), 0);
+
+      // number of unique users who paid > 0
+      const paidUserIds = new Set(
+        contributions.filter((c) => (c.amount || 0) > 0).map((c) => c.user.toString())
+      );
+      const usersPaidCount = paidUserIds.size;
+
+      const usersNotPaidCount = totalUsers - usersPaidCount;
+
+      const remaining = Math.max(0, (event.minAmount || 0) - totalPaid);
+
+      summaries.push({
+        eventId: event._id,
+        eventName: event.name,
+        minAmount: event.minAmount || 0,
+        startDate: event.startDate,
+        endDate: event.endDate,
+        totalPromised,       // 0 unless you add promisedAmount to contributions
+        totalPaid,
+        remaining,
+        usersPaidCount,
+        usersNotPaidCount,
+        totalUsers,
+        status: event.status,
       });
-    } else {
-      // promisedAmount should ONLY be set once
-      if (record.promisedAmount > 0) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Promised amount already set" });
-      }
-
-      record.promisedAmount = promisedAmount;
-      await record.save();
     }
 
-    res.json({ success: true, data: record });
+    return res.status(200).json(summaries);
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error("SUMMARY ERROR:", error);
+    return res.status(500).json({ message: error.message });
   }
 };
-
-
-
-export const addPaidAmount = async (req, res) => {
-  try {
-    const { userId, eventId, paidAmount } = req.body;
-
-    if (!userId || !eventId) {
-      return res.status(400).json({ success: false, message: "userId and eventId are required" });
-    }
-
-    const record = await Contribution.findOne({ userId, eventId });
-
-    if (!record) {
-      return res.status(404).json({ success: false, message: "Contribution record not found" });
-    }
-
-    record.paidAmount += paidAmount;
-
-    await record.save();
-
-    res.json({ success: true, data: record });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
 

@@ -1,14 +1,14 @@
 import express from "express";
 import { 
-  getEventContributions, 
-  setPromisedAmount, 
-  addPaidAmount 
+  eventsSummary,
+  getEventContributions,
+  saveContribution, 
 } from "../../Controlers/Events/contributions.js";
 
 const router = express.Router();
 
-router.get("/event/:eventId",  getEventContributions);
-router.post("/setPromised",  setPromisedAmount);
-router.post("/addAmount",  addPaidAmount);
+router.get("/getMchango/:eventId", getEventContributions);
+router.post("/addMchango", saveContribution);
+router.get("/eventsSummary",eventsSummary)
 
 export default router;
