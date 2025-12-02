@@ -20,7 +20,6 @@ const userSchema = mongoose.Schema(
     },
     dateOfBirth: {
       type: Date,
-      required: true,
     },
     gender: {
       type: String,
@@ -33,15 +32,12 @@ const userSchema = mongoose.Schema(
     },
     address: {
       type: String,
-      required: true,
     },
     title: {
       type: String,
-      required: true,
     },
     email: {
       type: String,
-      required: true,
       unique: true,
       validate: {
         validator: function (v) {
@@ -56,10 +52,9 @@ const userSchema = mongoose.Schema(
     },
 
     photo: {
-        type: String,
-        required: true
+      type: String,
     },
-    
+
     roles: {
       canAddUsers: { type: Boolean, default: true },
       canEditViewReports: { type: Boolean, default: true },
